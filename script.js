@@ -25,7 +25,26 @@ const modalTitle =
 /* ------------------------------
    Utilities
 --------------------------------*/
+function getMarkersData() {
+    return [...markers.values()].map(
+        marker => ({
+            id: marker.id,
+            lat: marker.lat,
+            lng: marker.lng,
+            links: marker.links
+        })
+    );
+}
 
+function clearAllMarkers() {
+    for (const marker of markers.values()) {
+        map.removeLayer(
+            marker.leafletMarker
+        );
+    }
+
+    markers.clear();
+}
 function createId() {
     return crypto.randomUUID();
 }
@@ -527,6 +546,127 @@ document.addEventListener(
                 )
                 .remove();
         }
+    }
+);
+function exportMarkers() {
+    const data = getMarkersData();
+
+    const blob = new Blob(
+        [
+            JSON.stringify(
+                data,
+                null,
+                2
+            )
+        ],
+        {
+            type: "application/json"
+        }
+    );
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const link =
+        document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+        `markers-${new Date()
+            .toISOString()
+            .slice(0, 10)}.json`;
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+async function importMarkers(
+    file
+) {
+    try {
+        const text =
+            await file.text();
+
+        const data =
+            JSON.parse(text);
+
+        if (
+            !Array.isArray(data)
+        ) {
+            throw new Error(
+                "Invalid format"
+            );
+        }
+
+        clearAllMarkers();
+
+        loadingMarkers = true;
+
+        data.forEach(marker => {
+            createMarker(
+                {
+                    lat: marker.lat,
+                    lng: marker.lng
+                },
+                marker.links || [],
+                marker.id
+            );
+        });
+
+        loadingMarkers = false;
+
+        saveMarkers();
+
+        alert(
+            `Imported ${data.length} markers`
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        alert(
+            "Invalid marker file"
+        );
+    }
+}
+const exportBtn =
+    document.getElementById(
+        "exportMarkersBtn"
+    );
+
+const importBtn =
+    document.getElementById(
+        "importMarkersBtn"
+    );
+
+const importInput =
+    document.getElementById(
+        "importMarkersInput"
+    );
+
+exportBtn.addEventListener(
+    "click",
+    exportMarkers
+);
+
+importBtn.addEventListener(
+    "click",
+    () => importInput.click()
+);
+
+importInput.addEventListener(
+    "change",
+    event => {
+
+        const file =
+            event.target.files?.[0];
+
+        if (file) {
+            importMarkers(file);
+        }
+
+        event.target.value = "";
     }
 );
 
