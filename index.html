@@ -1,0 +1,57 @@
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Link Markers</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet/dist/leaflet.css"
+    >
+
+    <link rel="stylesheet" href="style.css">
+
+    <div id="markerModal" class="modal">
+        <div class="modal-content">
+
+            <h3 id="modalTitle">Add Marker</h3>
+
+            <div id="linksContainer">
+               <div class="link-row">
+    <input
+        type="text"
+        class="link-title"
+        placeholder="Title">
+
+    <input
+        type="url"
+        class="link-url"
+        placeholder="https://example.com">
+
+    <button
+        type="button"
+        class="remove-link">
+        ✕
+    </button>
+</div>
+            </div>
+
+            <button id="addLinkBtn">
+                + Add Link
+            </button>
+
+            <hr>
+
+            <button id="saveMarkerBtn">
+                Save Marker
+            </button>
+
+            <button id="cancelMarkerBtn">
+                Cancel
+            </button>
+
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="index.js">	</script>
