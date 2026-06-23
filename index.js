@@ -12,45 +12,135 @@ const markers = new Map();
 let pendingLocation = null;
 let loadingMarkers = false;
 let editingMarkerId = null;
+
+const modal =
+    document.getElementById("markerModal");
+
+const linksContainer =
+    document.getElementById("linksContainer");
+
+const modalTitle =
+    document.getElementById("modalTitle");
+
 /* ------------------------------
    Utilities
 --------------------------------*/
-function fillModal(links) {
-    linksContainer.innerHTML = "";
 
-    links.forEach(link => {
-        const row = document.createElement("div");
-
-        row.className = "link-row";
-
-        row.innerHTML = `
-            <input
-                type="text"
-                class="link-title"
-                placeholder="Title"
-                value="${escapeHtml(link.title)}">
-
-            <input
-                type="url"
-                class="link-url"
-                placeholder="https://example.com"
-                value="${link.url}">
-        `;
-
-        linksContainer.appendChild(row);
-    });
-}
 function createId() {
     return crypto.randomUUID();
 }
 
+function escapeHtml(text = "") {
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
+function sanitizeUrl(url) {
+    try {
+        const parsed = new URL(url);
+
+        if (
+            parsed.protocol === "http:" ||
+            parsed.protocol === "https:"
+        ) {
+            return parsed.href;
+        }
+    } catch {}
+
+    return "#";
+}
+
+function createLinkRow(
+    title = "",
+    url = ""
+) {
+    const row =
+        document.createElement("div");
+
+    row.className = "link-row";
+
+    row.innerHTML = `
+        <input
+            type="text"
+            class="link-title"
+            placeholder="Title"
+            value="${escapeHtml(title)}">
+
+        <input
+            type="url"
+            class="link-url"
+            placeholder="https://example.com"
+            value="${escapeHtml(url)}">
+
+        <button
+            type="button"
+            class="remove-link">
+            ✕
+        </button>
+    `;
+
+    return row;
+}
+
+function fillModal(links = []) {
+    linksContainer.innerHTML = "";
+
+    if (!links.length) {
+        linksContainer.appendChild(
+            createLinkRow()
+        );
+        return;
+    }
+
+    links.forEach(link => {
+        linksContainer.appendChild(
+            createLinkRow(
+                link.title,
+                link.url
+            )
+        );
+    });
+}
+
+function getModalLinks() {
+    return [
+        ...document.querySelectorAll(
+            ".link-row"
+        )
+    ]
+        .map(row => ({
+            title: row
+                .querySelector(
+                    ".link-title"
+                )
+                .value.trim(),
+
+            url: row
+                .querySelector(
+                    ".link-url"
+                )
+                .value.trim()
+        }))
+        .filter(
+            link =>
+                link.title &&
+                link.url
+        );
+}
+
 function saveMarkers() {
-    const data = [...markers.values()].map(marker => ({
-        id: marker.id,
-        lat: marker.lat,
-        lng: marker.lng,
-        links: marker.links
-    }));
+    const data =
+        [...markers.values()].map(
+            marker => ({
+                id: marker.id,
+                lat: marker.lat,
+                lng: marker.lng,
+                links: marker.links
+            })
+        );
 
     localStorage.setItem(
         "mapMarkers",
@@ -62,7 +152,9 @@ function loadMarkers() {
     loadingMarkers = true;
 
     const saved = JSON.parse(
-        localStorage.getItem("mapMarkers") || "[]"
+        localStorage.getItem(
+            "mapMarkers"
+        ) || "[]"
     );
 
     saved.forEach(marker => {
@@ -77,6 +169,29 @@ function loadMarkers() {
     });
 
     loadingMarkers = false;
+}
+
+/* ------------------------------
+   Modal
+--------------------------------*/
+
+function openModal() {
+    modal.style.display = "flex";
+}
+
+function closeModal() {
+    modal.style.display = "none";
+
+    resetModal();
+}
+
+function resetModal() {
+    editingMarkerId = null;
+
+    modalTitle.textContent =
+        "Add Marker";
+
+    fillModal();
 }
 
 /* ------------------------------
@@ -103,67 +218,42 @@ function createMarker(
 
     updateMarkerPopup(id);
 
-    setupMarkerHover(leafletMarker);
+    setupMarkerHover(
+        leafletMarker
+    );
 
     if (!loadingMarkers) {
         saveMarkers();
     }
 }
 
-function setupMarkerHover(marker) {
-    marker.on("mouseover", function () {
-        this.openPopup();
-    });
-
-    marker.on("popupopen", function () {
-        const popup =
-            this.getPopup().getElement();
-
-        popup.addEventListener(
-            "mouseenter",
-            () => {
-                this._overPopup = true;
-            }
-        );
-
-        popup.addEventListener(
-            "mouseleave",
-            () => {
-                this._overPopup = false;
-                this.closePopup();
-            }
-        );
-    });
-
-    marker.on("mouseout", function () {
-        setTimeout(() => {
-            if (!this._overPopup) {
-                this.closePopup();
-            }
-        }, 200);
-    });
-}
-
 function updateMarkerPopup(id) {
-    const marker = markers.get(id);
+    const marker =
+        markers.get(id);
 
-    const linksHtml = marker.links
-        .map(link => {
-            return `
-                <a
-                    href="${link.url}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    ${escapeHtml(link.title)}
-                </a>
-            `;
-        })
-        .join("");
+    if (!marker) {
+        return;
+    }
+
+    const linksHtml =
+        marker.links
+            .map(
+                link => `
+                    <a
+                        href="${sanitizeUrl(link.url)}"
+                        target="_blank"
+                        rel="noopener noreferrer">
+                        ${escapeHtml(link.title)}
+                    </a>
+                `
+            )
+            .join("");
 
     marker.leafletMarker.bindPopup(`
         <div class="popup-links">
+
             <strong>Links</strong>
+
             <br><br>
 
             ${linksHtml}
@@ -171,32 +261,56 @@ function updateMarkerPopup(id) {
             <hr>
 
             <div class="popup-actions">
+
                 <button
                     class="edit-marker"
-                    data-id="${id}"
-                >
+                    data-id="${id}">
                     Edit
                 </button>
 
                 <button
                     class="delete-marker"
-                    data-id="${id}"
-                >
+                    data-id="${id}">
                     Delete
                 </button>
+
             </div>
+
         </div>
     `);
 }
 
-function deleteMarker(id) {
-    const marker = markers.get(id);
+function editMarker(id) {
+    const marker =
+        markers.get(id);
 
     if (!marker) {
         return;
     }
 
-    if (!confirm("Delete marker?")) {
+    editingMarkerId = id;
+
+    modalTitle.textContent =
+        "Edit Marker";
+
+    fillModal(marker.links);
+
+    openModal();
+}
+
+function deleteMarker(id) {
+    const marker =
+        markers.get(id);
+
+    if (!marker) {
+        return;
+    }
+
+    if (
+        !confirm(
+            "Delete marker?"
+        )
+    ) {
         return;
     }
 
@@ -209,186 +323,174 @@ function deleteMarker(id) {
     saveMarkers();
 }
 
-function editMarker(id) {
-    const marker = markers.get(id);
+function setupMarkerHover(
+    marker
+) {
+    marker.on(
+        "mouseover",
+        function () {
+            this.openPopup();
+        }
+    );
 
-    if (!marker) {
-        return;
-    }
+    marker.on(
+        "popupopen",
+        function () {
+            const popup =
+                this
+                    .getPopup()
+                    .getElement();
 
-    editingMarkerId = id;
+            popup.addEventListener(
+                "mouseenter",
+                () => {
+                    this._overPopup =
+                        true;
+                }
+            );
 
-    document.getElementById("modalTitle")
-        .textContent = "Edit Marker";
+            popup.addEventListener(
+                "mouseleave",
+                () => {
+                    this._overPopup =
+                        false;
 
-    fillModal(marker.links);
+                    this.closePopup();
+                }
+            );
+        }
+    );
 
-    openModal();
+    marker.on(
+        "mouseout",
+        function () {
+            setTimeout(() => {
+                if (
+                    !this._overPopup
+                ) {
+                    this.closePopup();
+                }
+            }, 200);
+        }
+    );
 }
 
 /* ------------------------------
    Popup Events
 --------------------------------*/
 
-map.on("popupopen", event => {
-    const popup =
-        event.popup.getElement();
+function handlePopupClick(
+    event
+) {
+    const button =
+        event.target;
 
-    const editBtn =
-        popup.querySelector(
-            ".edit-marker"
-        );
-
-    const deleteBtn =
-        popup.querySelector(
-            ".delete-marker"
-        );
-
-    if (editBtn) {
-        editBtn.addEventListener(
-            "click",
-            () => {
-                editMarker(
-                    editBtn.dataset.id
-                );
-            }
+    if (
+        button.classList.contains(
+            "edit-marker"
+        )
+    ) {
+        editMarker(
+            button.dataset.id
         );
     }
 
-    if (deleteBtn) {
-        deleteBtn.addEventListener(
-            "click",
-            () => {
-                deleteMarker(
-                    deleteBtn.dataset.id
-                );
-            }
+    if (
+        button.classList.contains(
+            "delete-marker"
+        )
+    ) {
+        deleteMarker(
+            button.dataset.id
         );
     }
-});
+}
+
+map.on(
+    "popupopen",
+    ({ popup }) => {
+        popup
+            .getElement()
+            .addEventListener(
+                "click",
+                handlePopupClick
+            );
+    }
+);
 
 /* ------------------------------
-   Modal Logic
+   UI Events
 --------------------------------*/
 
-const modal =
-    document.getElementById(
-        "markerModal"
-    );
-
-const linksContainer =
-    document.getElementById(
-        "linksContainer"
-    );
-
-function openModal() {
-    modal.style.display = "flex";
-}
-
-function closeModal() {
-    modal.style.display = "none";
-
-    resetModal();
-}
-
-function resetModal() {
-    editingMarkerId = null;
-
-    document.getElementById("modalTitle")
-        .textContent = "Add Marker";
-
-    linksContainer.innerHTML = `
-        <div class="link-row">
-            <input
-                type="text"
-                class="link-title"
-                placeholder="Title">
-
-            <input
-                type="url"
-                class="link-url"
-                placeholder="https://example.com">
-        </div>
-    `;
-}
-
 document
-    .getElementById("addLinkBtn")
-    .addEventListener("click", () => {
-
-        const row =
-            document.createElement("div");
-
-        row.className = "link-row";
-
-        row.innerHTML = `
-            <input
-                type="text"
-                class="link-title"
-                placeholder="Title">
-
-            <input
-                type="url"
-                class="link-url"
-                placeholder="https://example.com">
-        `;
-
-        linksContainer.appendChild(row);
-    });
-
-document
-    .getElementById("saveMarkerBtn")
-    .addEventListener("click", () => {
-
-        const rows =
-            document.querySelectorAll(".link-row");
-
-        const links = [...rows]
-            .map(row => ({
-                title: row
-                    .querySelector(".link-title")
-                    .value
-                    .trim(),
-
-                url: row
-                    .querySelector(".link-url")
-                    .value
-                    .trim()
-            }))
-            .filter(link =>
-                link.title &&
-                link.url
+    .getElementById(
+        "addLinkBtn"
+    )
+    .addEventListener(
+        "click",
+        () => {
+            linksContainer.appendChild(
+                createLinkRow()
             );
-
-        if (!links.length) {
-            alert(
-                "Add at least one valid link."
-            );
-            return;
         }
+    );
 
-        if (editingMarkerId) {
-            const marker =
-                markers.get(editingMarkerId);
+document
+    .getElementById(
+        "saveMarkerBtn"
+    )
+    .addEventListener(
+        "click",
+        () => {
 
-            marker.links = links;
+            const links =
+                getModalLinks();
 
-            updateMarkerPopup(
+            if (
+                !links.length
+            ) {
+                alert(
+                    "Add at least one valid link."
+                );
+                return;
+            }
+
+            if (
                 editingMarkerId
-            );
+            ) {
+                const marker =
+                    markers.get(
+                        editingMarkerId
+                    );
 
-            saveMarkers();
-        } else {
-            createMarker(
-                pendingLocation,
-                links
-            );
+                if (
+                    !marker
+                ) {
+                    closeModal();
+                    return;
+                }
+
+                marker.links =
+                    links;
+
+                updateMarkerPopup(
+                    editingMarkerId
+                );
+
+                saveMarkers();
+            } else {
+                createMarker(
+                    pendingLocation,
+                    links
+                );
+            }
+
+            pendingLocation =
+                null;
+
+            closeModal();
         }
-
-        pendingLocation = null;
-
-        closeModal();
-    });
+    );
 
 document
     .getElementById(
@@ -398,56 +500,59 @@ document
         "click",
         closeModal
     );
-document.addEventListener("click", event => {
-    if (
-        event.target.classList.contains(
-            "remove-link"
-        )
-    ) {
+
+document.addEventListener(
+    "click",
+    event => {
+
+        if (
+            !event.target.classList.contains(
+                "remove-link"
+            )
+        ) {
+            return;
+        }
+
         const rows =
             document.querySelectorAll(
                 ".link-row"
             );
 
-        if (rows.length > 1) {
+        if (
+            rows.length > 1
+        ) {
             event.target
-                .closest(".link-row")
+                .closest(
+                    ".link-row"
+                )
                 .remove();
         }
     }
-});
+);
+
 /* ------------------------------
    Map Click
 --------------------------------*/
 
-map.on("click", event => {
-    editingMarkerId = null;
+map.on(
+    "click",
+    event => {
 
-    pendingLocation = event.latlng;
+        editingMarkerId =
+            null;
 
-    document.getElementById("modalTitle")
-        .textContent = "Add Marker";
+        pendingLocation =
+            event.latlng;
 
-    resetModal();
+        resetModal();
 
-    openModal();
-});
-
-/* ------------------------------
-   Security
---------------------------------*/
-
-function escapeHtml(text) {
-    const div =
-        document.createElement("div");
-
-    div.textContent = text;
-
-    return div.innerHTML;
-}
+        openModal();
+    }
+);
 
 /* ------------------------------
    Init
 --------------------------------*/
 
+resetModal();
 loadMarkers();
