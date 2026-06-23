@@ -1,0 +1,97 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+#map {
+    height: 100vh;
+    width: 100%;
+}
+
+.popup-links a {
+    display: block;
+    margin: 5px 0;
+    text-decoration: none;
+}
+
+.popup-actions {
+    margin-top: 10px;
+}
+
+.popup-actions button {
+    margin-right: 5px;
+}
+
+/* Modal */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.5);
+
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #fff;
+
+    width: 500px;
+    max-width: 90vw;
+
+    padding: 20px;
+    border-radius: 10px;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+}
+
+#linksContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    margin-bottom: 15px;
+}
+
+.link-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 10px;
+}
+
+.link-row input {
+    width: 100%;
+    padding: 10px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.modal button {
+    padding: 10px 14px;
+
+    border: none;
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+#addLinkBtn {
+    margin-bottom: 10px;
+}
+.link-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 10px;
+}
+
+.remove-link {
+    padding: 8px 12px;
+}
