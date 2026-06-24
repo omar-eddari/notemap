@@ -12,7 +12,113 @@ const markers = new Map();
 let pendingLocation = null;
 let loadingMarkers = false;
 let editingMarkerId = null;
+let searchMarker = null;
+function goToCoordinates() {
+    const lat = Number(
+        document.getElementById(
+            "latitudeInput"
+        ).value
+    );
 
+    const lng = Number(
+        document.getElementById(
+            "longitudeInput"
+        ).value
+    );
+
+    if (
+        Number.isNaN(lat) ||
+        Number.isNaN(lng)
+    ) {
+        alert("Enter valid coordinates.");
+        return;
+    }
+
+    if (
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+    ) {
+        alert("Coordinates out of range.");
+        return;
+    }
+
+    map.setView(
+        [lat, lng],
+        16,
+        {
+            animate: true
+        }
+    );
+
+   const existingMarker =
+    findMarkerAtLocation(
+        lat,
+        lng
+    );
+
+    if (existingMarker) {
+        existingMarker.leafletMarker.openPopup();
+        return;
+    }
+
+    pendingLocation = {
+        lat,
+        lng
+    };
+
+    editingMarkerId = null;
+
+    resetModal();
+
+    modalTitle.textContent =
+        "Add Marker";
+
+    openModal();
+}
+function findMarkerAtLocation(
+    lat,
+    lng,
+    tolerance = 0.00001
+) {
+    return [...markers.values()].find(
+        marker =>
+            Math.abs(
+                marker.lat - lat
+            ) < tolerance &&
+            Math.abs(
+                marker.lng - lng
+            ) < tolerance
+    );
+}
+document
+    .getElementById(
+        "goToCoordinatesBtn"
+    )
+    .addEventListener(
+        "click",
+        goToCoordinates
+    );
+[
+    "latitudeInput",
+    "longitudeInput"
+].forEach(id => {
+
+    document
+        .getElementById(id)
+        .addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key === "Enter"
+                ) {
+                    goToCoordinates();
+                }
+            }
+        );
+});
 const modal =
     document.getElementById("markerModal");
 
